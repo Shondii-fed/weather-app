@@ -1,72 +1,96 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import SearchBar from './components/SearchBar';
-import WeatherCard from './components/WeatherCard';
+import WeatherDisplay from './components/WeatherDisplay';
+import Forecast from './components/Forecast';
 import UnitToggle from './components/UnitToggle';
-import { fetchWeatherByCity, fetchWeatherByCoords } from './api/weather';
-import { getBackgroundClass } from './utils/getBackgroundClass';
+import { fetchWeather, WeatherData } from './api/weather';
+import { getWeatherBackground } from './utils/getWeatherBackground';
 
 const App: React.FC = () => {
-  const [weather, setWeather] = useState<any>(null);
-  const [error, setError] = useState('');
-  const [unit, setUnit] = useState<'metric' | 'imperial'>('metric');
-  const [hasSearched, setHasSearched] = useState(false);
-  const [currentCity, setCurrentCity] = useState<string | null>(null);
-  const backgroundClass = weather ? getBackgroundClass(weather.weather[0].main) : 'bg-gray-100';
-
-  useEffect(() => {
-    if (!hasSearched && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const data = await fetchWeatherByCoords(
-              position.coords.latitude,
-              position.coords.longitude,
-              unit
-            );
-            setWeather(data);
-          } catch {
-            setError('Could not fetch weather for your location.');
-          }
-        },
-        () => setError('Location access denied.')
-      );
-    }
-  }, [unit, hasSearched]);
-
-  useEffect(() => {
-    if (hasSearched && currentCity) {
-      const fetchCityWeather = async () => {
-      try {
-        const data = await fetchWeatherByCity(currentCity, unit);
-        setWeather(data);
-      } catch {
-        setError('Could not update weather for selected city');
-      }  
-    };
-    fetchCityWeather();
-  }
-}, [unit]);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [unit, setUnit] = useState<'C' | 'F'>('C');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async (city: string) => {
+    setLoading(true);
+    setError(null);
     try {
-      setError('');
-      const data = await fetchWeatherByCity(city, unit);
+      const data = await fetchWeather(city);
       setWeather(data);
-      setHasSearched(true);
-      setCurrentCity(city);
-    } catch {
-      setError('City not found. Try another one.');
-      setWeather(null);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to fetch weather. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const data = await fetchWeather(`${latitude},${longitude}`);
+          setWeather(data);
+        } catch (err) {
+          console.error(err);
+          setError('Failed to fetch weather for your location.');
+        } finally {
+          setLoading(false);
+        }
+      },
+      () => {
+        setError('Unable to retrieve your location.');
+        setLoading(false);
+      }
+    );
+  };
+
+  const toggleUnit = () => {
+    setUnit(unit === 'C' ? 'F' : 'C');
+  };
+
   return (
-    <div className={`min-h-screen ${backgroundClass} transition-colors duration-1000 flex flex-col items-center justify-center p-4`}>
-      <h1 className="text-4xl font-bold mb-4 drop-shadow-[2px_2px_2px_white]">Weather App</h1>
-      <SearchBar onSearch={handleSearch} />
-      <UnitToggle unit={unit} onToggle={setUnit} />
-      {error && <p className="text-red-600 mt-4">{error}</p>}
-      {weather && <WeatherCard data={weather} unit={unit} />}
+    <div
+      className={`min-h-screen p-4 bg-gradient-to-b ${weather 
+      ? getWeatherBackground(weather.days[0].conditions) : 'from-blue-300 to-blue-600'}`}
+    >
+      <h1 className="text-4xl font-bold text-center">Weather App</h1>
+
+      {/* Search + Current Location */}
+      <div className="flex justify-center mt-4 gap-2 items-center margin-top-4">
+        <SearchBar onSearch={handleSearch} />
+        <button
+          onClick={handleCurrentLocation}
+          className="px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition-colors"
+        >
+          Current Location
+        </button>
+      </div>
+
+      {/* Unit toggle */}
+      <UnitToggle unit={unit} onToggle={toggleUnit} />
+
+      {/* Loading / Error */}
+      {loading && <p className="text-center text-white mt-4">Loading...</p>}
+      {error && <p className="text-center text-red-500 mt-4">{error}</p>}
+
+      {/* Weather display */}
+      {weather && (
+        <>
+          <WeatherDisplay weather={weather} unit={unit} />
+          <Forecast weather={weather} unit={unit} />
+        </>
+      )}
     </div>
   );
 };

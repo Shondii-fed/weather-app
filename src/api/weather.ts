@@ -1,14 +1,32 @@
-const API_KEY = import.meta.env.VITE_WEATHER_API_KEY;
-const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
+const API_KEY = import.meta.env.VITE_VISUAL_CROSSING_KEY;
 
-export async function fetchWeatherByCity(city: string, units: 'metric' | 'imperial') {
-    const response = await fetch(`${BASE_URL}?q=${city}&appid=${API_KEY}&units=${units}`);
-    if (!response.ok) throw new Error('City not found');
-    return response.json();
+export interface WeatherData {
+    resolvedAddress: string;
+    days: Array<{
+        datetime: string;
+        tempmax: number;
+        tempmin: number;
+        temp: number;
+        humidity: number;
+        conditions: string;
+        icon: string;
+        precip: number;
+        windspeed: number;
+    }>;
 }
 
-export async function fetchWeatherByCoords(lat: number, lon: number, units: 'metric' | 'imperial') {
-    const response = await fetch(`${BASE_URL}?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=${units}`);
-    if (!response.ok) throw new Error('Location not found');
-    return response.json();
-}
+export const fetchWeather = async (location: string): Promise<WeatherData> => {
+    try {
+        const response = await fetch(`https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${location}?unitGroup=metric&key=${API_KEY}&include=days`);
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch weather data');
+        }
+
+        const data: WeatherData = await response.json();
+        return data;
+    }   catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
