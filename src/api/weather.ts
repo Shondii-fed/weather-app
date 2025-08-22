@@ -1,5 +1,3 @@
-const API_KEY = import.meta.env.VITE_VISUAL_CROSSING_KEY;
-
 export interface WeatherData {
     resolvedAddress: string;
     days: Array<{
@@ -15,18 +13,17 @@ export interface WeatherData {
     }>;
 }
 
-export const fetchWeather = async (location: string): Promise<WeatherData> => {
-    try {
-        const response = await fetch(`https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${location}?unitGroup=metric&key=${API_KEY}&include=days`);
+export const fetchWeather = async (location: string) => {
+  try {
+    const response = await fetch(`/.netlify/functions/weather?location=${encodeURIComponent(location)}`);
 
-        if (!response.ok) {
-            throw new Error('Failed to fetch weather data');
-        }
-
-        const data: WeatherData = await response.json();
-        return data;
-    }   catch (error) {
-        console.error(error);
-        throw error;
+    if (!response.ok) {
+      throw new Error("Failed to fetch weather data");
     }
+
+    return response.json();
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
 };
