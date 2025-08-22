@@ -58,3 +58,9 @@ npm install
 cp .env.example .env
 # Then add your OpenWeather API key in the .env file:
 # VITE_WEATHER_API_KEY=your_api_key_here
+
+# Screenshots
+![Weather App showing 15 day Forecast for New York City](<public/screenshots/Weather App.png>)
+
+# Netlify Link
+[text](https://sdweathertracker.netlify.app/)
